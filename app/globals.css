@@ -7,15 +7,24 @@
   --foreground: #171717;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.swal2-input, .swal2-textarea {
+  margin: 10px auto !important;
+  width: 90% !important;
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+.swal2-textarea {
+  height: 100px !important;
+}
+
+.swal2-checkbox-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.swal2-checkbox {
+  width: 1rem;
+  height: 1rem;
 }

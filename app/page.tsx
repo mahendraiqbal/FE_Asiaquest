@@ -1,101 +1,222 @@
-import Image from "next/image";
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Todo, TodoInput } from '@/types/todo';
+import { todoService } from './services/todoService';
+import TodoItem from './components/TodoItem';
+import Swal from 'sweetalert2';
+import { Plus } from 'lucide-react'; // Import icon untuk tombol Add
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [todos, setTodos] = useState<Todo[]>([]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const fetchTodos = async () => {
+    try {
+      const data = await todoService.getAllTodos();
+      setTodos(data);
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to fetch todos',
+        showConfirmButton: false,
+        timer: 1500
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchTodos();
+  }, []);
+
+  const showTodoForm = async (todo?: Todo) => {
+    const { value: formValues } = await Swal.fire({
+      title: todo ? 'Edit Todo' : 'Add New Todo',
+      html: `
+        <input 
+          id="swal-input1" 
+          class="swal2-input" 
+          placeholder="Title" 
+          value="${todo?.title || ''}"
+        >
+        <textarea 
+          id="swal-input2" 
+          class="swal2-textarea" 
+          placeholder="Description"
+        >${todo?.description || ''}</textarea>
+        <div class="swal2-checkbox-container">
+          <input 
+            type="checkbox" 
+            id="swal-input3" 
+            class="swal2-checkbox" 
+            ${todo?.completed ? 'checked' : ''}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          <label for="swal-input3">Completed</label>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: todo ? 'Update' : 'Create',
+      cancelButtonText: 'Cancel',
+      preConfirm: () => {
+        const title = (document.getElementById('swal-input1') as HTMLInputElement).value;
+        const description = (document.getElementById('swal-input2') as HTMLTextAreaElement).value;
+        const completed = (document.getElementById('swal-input3') as HTMLInputElement).checked;
+        
+        if (!title.trim()) {
+          Swal.showValidationMessage('Title is required');
+          return false;
+        }
+        
+        return {
+          title,
+          description,
+          completed
+        };
+      }
+    });
+
+    if (formValues) {
+      if (todo) {
+        await handleUpdate(todo.id, formValues);
+      } else {
+        await handleCreate(formValues);
+      }
+    }
+  };
+
+  const handleCreate = async (todo: TodoInput) => {
+    try {
+      await todoService.createTodo(todo);
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Todo created successfully',
+        showConfirmButton: false,
+        timer: 1500
+      });
+      fetchTodos();
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to create todo',
+        showConfirmButton: false,
+        timer: 1500
+      });
+    }
+  };
+
+  const handleUpdate = async (id: number, todo: TodoInput) => {
+    try {
+      await todoService.updateTodo(id, todo);
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Todo updated successfully',
+        showConfirmButton: false,
+        timer: 1500
+      });
+      fetchTodos();
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to update todo',
+        showConfirmButton: false,
+        timer: 1500
+      });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      const result = await Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (result.isConfirmed) {
+        await todoService.deleteTodo(id);
+        Swal.fire({
+          icon: 'success',
+          title: 'Deleted!',
+          text: 'Todo has been deleted.',
+          showConfirmButton: false,
+          timer: 1500
+        });
+        fetchTodos();
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to delete todo',
+        showConfirmButton: false,
+        timer: 1500
+      });
+    }
+  };
+
+  const handleToggleComplete = async (todo: Todo) => {
+    try {
+      await todoService.updateTodo(todo.id, {
+        ...todo,
+        completed: !todo.completed
+      });
+      
+      // Optional: Tampilkan notifikasi kecil
+      Swal.fire({
+        icon: 'success',
+        title: todo.completed ? 'Task unmarked' : 'Task completed',
+        showConfirmButton: false,
+        timer: 1000,
+        position: 'top-end',
+        toast: true
+      });
+      
+      fetchTodos();
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to update todo status',
+        showConfirmButton: false,
+        timer: 1500
+      });
+    }
+  };
+
+  return (
+    <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Todo List</h1>
+        <button
+          onClick={() => showTodoForm()}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+          <Plus className="w-5 h-5" />
+          Add New Todo
+        </button>
+      </div>
+
+      <div className="space-y-4">
+        {todos.map((todo) => (
+          <TodoItem
+            key={todo.id}
+            todo={todo}
+            onDelete={handleDelete}
+            onEdit={() => showTodoForm(todo)}
+            onToggleComplete={handleToggleComplete}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        ))}
+      </div>
+    </main>
   );
 }
